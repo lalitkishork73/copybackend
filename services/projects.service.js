@@ -3,8 +3,20 @@ const { pagination } = require("../services/utility.service");
 const { userSelect, applicationSelect } = require("./service.constants");
 
 const createProjectService = async (bodyArgs) => {
+  let duration = 1;
+
+  if (bodyArgs) {
+    duration = parseInt(bodyArgs.duration);
+  }
+
+  const currentDate = new Date();
+
+  const completionDate = currentDate.setDate(currentDate.getDate() + duration);
+  console.log(completionDate);
+
   const project = new Project({
     ...bodyArgs,
+    duration: { from: currentDate, to: completionDate },
   });
   const err = await project.validateSync();
   if (err) {
