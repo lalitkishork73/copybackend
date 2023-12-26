@@ -211,6 +211,8 @@ const registerUserService = async ({
       return { status: 400, message: "something went wrong" };
     }
 
+    const fullName = firstName + " " + lastName;
+
     const newUser = new User({
       email,
       firstName,
@@ -219,6 +221,7 @@ const registerUserService = async ({
       phoneNumber,
       userName,
       userType,
+      fullName,
     });
     const err = await newUser.validateSync();
     if (err) {

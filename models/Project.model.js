@@ -37,16 +37,7 @@ const projectSchema = new mongoose.Schema(
       //         required: true
     },
     duration: {
-      from: {
-        type: Date,
-        trim: true,
-        default: "",
-      },
-      to: {
-        type: Date,
-        trim: true,
-        default: "",
-      },
+      type: String,
     },
     visibility: [
       {
