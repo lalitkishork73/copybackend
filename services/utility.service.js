@@ -19,7 +19,6 @@ const queryConditions = (bodyObj, keys = []) => {
 };
 
 const comparePassword = async (password, hash) => {
-  console.log(password, hash, "this is hash and password");
   const isMatch = await bcrypt.compare(password, hash);
   if (isMatch) {
     return true;

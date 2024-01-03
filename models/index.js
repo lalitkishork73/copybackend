@@ -1,8 +1,9 @@
 module.exports = {
-  User: require("./User.model"),
+  User: require('./User.model'),
   // UserSchemaKeys: require("./User.model").userSchemaKeys,
-  Project: require("./Project.model"),
-  Application: require("./Application.model"),
-  HireRequest: require("./HireRequest.model"),
-  Notification: require("./Notification.model"),
-}
+  Project: require('./Project.model'),
+  Application: require('./Application.model'),
+  HireRequest: require('./HireRequest.model'),
+  Notification: require('./Notification.model'),
+  Category: require('./Category.model'),
+};

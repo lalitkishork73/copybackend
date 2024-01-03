@@ -36,6 +36,9 @@ const userFindService = async (conditions) => {
     .populate({
       path: "projects",
       select: projectSelect,
+      populate: {
+        path: "skills",
+      },
     })
     .populate({
       path: "applications.projectId",
@@ -43,6 +46,9 @@ const userFindService = async (conditions) => {
       populate: {
         path: "hired.freelancerId",
         select: userSelect,
+      },
+      populate: {
+        path: "skills",
       },
     })
     .populate({
@@ -72,6 +78,9 @@ const userFindService = async (conditions) => {
     .populate({
       path: "favByUsers",
       select: userSelect,
+    })
+    .populate({
+      path: "skills",
     });
   return user;
 };
@@ -112,6 +121,9 @@ const getAllUsersService = async ({ conditions, page, size }) => {
         path: "hired.freelancerId",
         select: userSelect,
       },
+      populate: {
+        path: "skills",
+      },
     })
     .populate({
       path: "applications.applicationId",
@@ -140,6 +152,9 @@ const getAllUsersService = async ({ conditions, page, size }) => {
     .populate({
       path: "favByUsers",
       select: userSelect,
+    })
+    .populate({
+      path: "skills",
     });
 
   const count = await User.find({ ...conditions }).count();
@@ -188,7 +203,7 @@ const registerUserService = async ({
   const user = await await User.findOne({
     $or: [{ email }, { userName }],
   });
-  console.log(user);
+
   if (user) {
     if (user.userName === userName) {
       return {
@@ -225,7 +240,6 @@ const registerUserService = async ({
     });
     const err = await newUser.validateSync();
     if (err) {
-      console.log(err);
       return {
         message: `Something went Wrong`,
         status: 400,
@@ -275,9 +289,20 @@ const setReviewService = async ({
   description,
   rating,
 }) => {
+  const userDetails = await User.findById(userId);
+  const reviews = userDetails.reviews || [];
+  const totalRating =
+    reviews.reduce((sum, review) => sum + review.rating, 0) + parseInt(rating);
+  const newAverageRating =
+    totalRating > 0 ? totalRating / (reviews.length + 1) : 0;
+  console.log(totalRating, newAverageRating, "this is average rating");
+
   const userUpdate = await User.findByIdAndUpdate(
     userId,
     {
+      $set: {
+        averageRating: newAverageRating,
+      },
       $push: {
         reviews: {
           reviewedBy,
@@ -397,12 +422,9 @@ const updateUserService = async ({
   website,
 }) => {
   const fullName = firstName + " " + lastName;
-  console.log(socialProfiles);
-  console.log(portfolioProjects);
-  console.log(skills);
 
   const projects = portfolioProjects.filter((project) => project !== false);
-  console.log(projects, "this is projects");
+
   if (!email) {
     return {
       status: 404,

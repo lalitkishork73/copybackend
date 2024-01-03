@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-
 const userSchema = new mongoose.Schema(
   {
     fullName: {
@@ -38,7 +37,6 @@ const userSchema = new mongoose.Schema(
       type: String,
       // required: true,
     },
-
     intro: {
       type: String,
       // required: true,
@@ -59,7 +57,6 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-
     website: {
       type: String,
       default: "",
@@ -89,10 +86,8 @@ const userSchema = new mongoose.Schema(
     ],
     skills: [
       {
-        name: {
-          type: String,
-          required: true,
-        },
+        type: mongoose.Schema.ObjectId,
+        ref: "category",
       },
     ],
     portfolioProjects: [
@@ -122,6 +117,7 @@ const userSchema = new mongoose.Schema(
         rating: {
           type: Number,
           required: true,
+          default: 0,
         },
         reviewedBy: {
           type: mongoose.Schema.ObjectId,
@@ -130,6 +126,8 @@ const userSchema = new mongoose.Schema(
         },
       },
     ],
+    averageRating: { type: Number, default: 0 },
+
     reviewed: [
       {
         type: mongoose.Schema.ObjectId,
@@ -204,8 +202,6 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
 // run this below line in mongo for full text search
 // db.users.createIndex({ "$**" : "text" })
-
 module.exports = mongoose.model("user", userSchema);

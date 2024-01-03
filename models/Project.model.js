@@ -12,8 +12,8 @@ const projectSchema = new mongoose.Schema(
     },
     skills: [
       {
-        type: String,
-        //         required: true,
+        type: mongoose.Schema.ObjectId,
+        ref: "category",
       },
     ],
     education: [
@@ -96,7 +96,7 @@ const projectSchema = new mongoose.Schema(
         freelancerId: {
           type: mongoose.Schema.ObjectId,
           ref: "user",
-          unique: true,
+          // unique: true,
         },
         applicationId: {
           type: mongoose.Schema.ObjectId,

@@ -11,4 +11,8 @@ router.get(
   "/getProjectById/:projectId",
   useTryCatch(projectControllers.getProjectById)
 );
+router.get(
+  "/getvalidProjectForHire",
+  useTryCatch(projectControllers.getValidProjectsForHire)
+);
 module.exports = router;

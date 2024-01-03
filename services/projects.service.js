@@ -1,7 +1,6 @@
 const { User, Project } = require("../models");
 const { pagination } = require("../services/utility.service");
 const { userSelect, applicationSelect } = require("./service.constants");
-
 const createProjectService = async (bodyArgs) => {
   const project = new Project({
     ...bodyArgs,
@@ -15,7 +14,6 @@ const createProjectService = async (bodyArgs) => {
     };
   } else {
     const projectSave = await project.save();
-
     const userUpdate = await User.findOneAndUpdate(
       { _id: projectSave?.postedBy },
       { $push: { projects: projectSave?._id } },
@@ -24,7 +22,6 @@ const createProjectService = async (bodyArgs) => {
         new: true,
       }
     );
-
     return {
       status: 200,
       message: "Project added",
@@ -34,12 +31,10 @@ const createProjectService = async (bodyArgs) => {
     };
   }
 };
-
 const getAllProjectsService = async ({ page, size, conditions }) => {
   const { limit, skip } = pagination({ page, size });
   const count = await Project.find({ ...conditions }).count();
   const totalPages = count / size;
-
   const projects = await Project.find({ ...conditions }, {}, { limit, skip })
     .sort({ createdAt: -1 })
     .populate("postedBy")
@@ -71,8 +66,11 @@ const getAllProjectsService = async ({ page, size, conditions }) => {
       path: "hired.freelancerId",
       model: "user",
       select: userSelect,
+    })
+    .populate({
+      path: "skills",
+      model: "category",
     });
-
   if (projects.length >= 1) {
     const skills = projects.reduce(
       (a, c) => [...new Set([...a, ...c.skills])],
@@ -86,7 +84,6 @@ const getAllProjectsService = async ({ page, size, conditions }) => {
       (a, c) => [...new Set([...a, ...c.visibility])],
       []
     );
-    console.log(skills);
     return {
       status: 200,
       message: "Projects List",
@@ -106,11 +103,8 @@ const getAllProjectsService = async ({ page, size, conditions }) => {
     };
   }
 };
-
 const getProjectByIdService = async ({ projectId }) => {
-  console.log(projectId);
-
-  const project = await Project.findById(projectId);
+  const project = await Project.findById(projectId).populate("skills");
   if (!project) {
     return { status: 404, message: "No project found" };
   } else {
@@ -121,7 +115,6 @@ const getProjectByIdService = async ({ projectId }) => {
     };
   }
 };
-
 const editProjectService = async ({
   projectTitle,
   description,
@@ -136,12 +129,9 @@ const editProjectService = async ({
   budget,
   duration,
 }) => {
-  console.log("request came");
-  console.log(projectId);
   const project = await Project.findByIdAndUpdate(projectId, {
     projectTitle,
     description,
-
     skills,
     education,
     workLocation,
@@ -152,11 +142,10 @@ const editProjectService = async ({
     budget,
     duration,
   });
-
   if (project) {
     return {
       status: 200,
-      message: "Project updated succesfully",
+      message: "Project updated successfully",
     };
   } else {
     return {
@@ -165,7 +154,6 @@ const editProjectService = async ({
     };
   }
 };
-
 const getProjectById = async ({ projectId }) => {
   const project = await Project.findById(projectId);
   if (!project) {
@@ -181,11 +169,21 @@ const getProjectById = async ({ projectId }) => {
     };
   }
 };
-
+const getValidProjects = async ({ clientId, freelancerId }) => {
+  const projects = await Project.find({
+    postedBy: clientId,
+    $nor: [
+      { "hireRequests.freelancerId": freelancerId },
+      { "hired.freelancerId": freelancerId },
+    ],
+  }).exec();
+  return { status: 200, message: "Get data", projects };
+};
 module.exports = {
   createProjectService,
   getAllProjectsService,
   editProjectService,
   getProjectById,
   getProjectByIdService,
+  getValidProjects,
 };

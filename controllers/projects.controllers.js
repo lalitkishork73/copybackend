@@ -4,11 +4,13 @@ const {
   getAllProjectsService,
   editProjectService,
   getProjectByIdService,
+  getValidProjects,
 } = require("../services/projects.service");
 const { queryConditions } = require("../services/utility.service");
 
 const getAllProjects = async (req, res) => {
   const { page = 1, size = 10 } = req.query;
+
 
   const conditions = queryConditions(req.body, Object.keys(Project.schema.obj));
 
@@ -21,9 +23,11 @@ const getAllProjects = async (req, res) => {
 
 const getProjectById = async (req, res) => {
   const { projectId } = req.params;
+  console.log("project Id",projectId);   
   const response = await getProjectByIdService({
     projectId,
   });
+
 
   res.status(response.status).json({
     ...response,
@@ -45,6 +49,10 @@ const createProject = async (req, res) => {
     duration,
     category,
   } = req.body;
+
+  console.log(skills);
+
+
 
   const response = await createProjectService({
     projectTitle,
@@ -101,10 +109,23 @@ const editProject = async (req, res) => {
     ...response,
   });
 };
+const getValidProjectsForHire = async (req, res) => {
+  const { freelancerId, clientId } = req.query;
+
+  const response = await getValidProjects({
+    freelancerId,
+    clientId,
+  });
+
+  res.status(response.status).json({
+    ...response,
+  });
+};
 
 module.exports = {
   getAllProjects,
   createProject,
   editProject,
   getProjectById,
+  getValidProjectsForHire,
 };

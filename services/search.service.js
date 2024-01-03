@@ -92,7 +92,7 @@ const searchService = async ({
     },
     {}
   ).count();
-  console.log(projects);
+
   const totalUserPages = Math.ceil(userCount / size);
   const totalProjectPages = Math.ceil(projectCount / size);
 
