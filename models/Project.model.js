@@ -114,5 +114,5 @@ const projectSchema = new mongoose.Schema(
 
 // run this below line in mongo for full text search
 // db.projects.createIndex({ "$**" : "text" })
-
+projectSchema.index({ projectTitle: "text" });
 module.exports = mongoose.model("project", projectSchema);

@@ -71,6 +71,12 @@ const searchService = async ({
     },
     { limit, skip }
   )
+    .populate({
+      path: "skills",
+    })
+    .populate({
+      path: "postedBy",
+    })
     .sort({ createdAt: -1, ...stringScore })
     .select(projectGenericSelect);
 

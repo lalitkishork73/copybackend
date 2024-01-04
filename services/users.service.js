@@ -138,6 +138,9 @@ const getAllUsersService = async ({ conditions, page, size }) => {
       select: userSelect,
     })
     .populate({
+      path: "hireRequests.hireRequestId",
+    })
+    .populate({
       path: "reviews.reviewedBy",
       select: userSelect,
     })

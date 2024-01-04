@@ -204,4 +204,5 @@ const userSchema = new mongoose.Schema(
 );
 // run this below line in mongo for full text search
 // db.users.createIndex({ "$**" : "text" })
+userSchema.index({ userName: "text", "skills.name": "text" });
 module.exports = mongoose.model("user", userSchema);
