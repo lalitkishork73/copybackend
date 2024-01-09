@@ -130,7 +130,7 @@ const server = app.listen(process.env.PORT || 4000, () => {
 const io = require("socket.io")(server, {
   pingTimeout: 60000,
   cors: {
-    origin: "http://localhost:3000",
+    origin: process.env.SOCKET_ORIGIN,
     // credentials: true,
   },
 });
