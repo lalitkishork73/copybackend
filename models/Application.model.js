@@ -1,40 +1,49 @@
 const mongoose = require("mongoose");
 
-const applicationSchema = new mongoose.Schema({
+const applicationSchema = new mongoose.Schema(
+  {
     projectId: {
-        type: mongoose.Schema.ObjectId,
-        ref: "project", 
+      type: mongoose.Schema.ObjectId,
+      ref: "project",
     },
     userId: {
-        type: mongoose.Schema.ObjectId,
-        ref: "user",
-        // unique: true,
+      type: mongoose.Schema.ObjectId,
+      ref: "user",
+      // unique: true,
     },
     description: {
-        type: String, 
-        required: true,
+      type: String,
+      required: true,
     },
     bid: {
-        type: Number,
-        required: true,
-    }, 
+      type: Number,
+      required: true,
+    },
     duration: {
-        type: Number,
-        // required: true,
+      type: Number,
+      // required: true,
     },
     coverLetter: {
-        type: String, 
-        // required: true,
+      type: String,
+      // required: true,
     },
-    attachmentLinks: [{
+    attachmentLinks: [
+      {
         type: String,
         // required: true,
-    }],
+      },
+    ],
     applicationStatus: {
-        type: String,
-        enum : ['rejected','hold', 'hired'],
+      type: String,
+      enum: ["rejected", "hold", "hired"],
+      default: "hold",
     },
-},
-{ timestamps: true })
+    active: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  { timestamps: true }
+);
 
-module.exports = mongoose.model("application", applicationSchema)
+module.exports = mongoose.model("application", applicationSchema);

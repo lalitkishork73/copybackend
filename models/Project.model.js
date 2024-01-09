@@ -16,9 +16,15 @@ const projectSchema = new mongoose.Schema(
         ref: "category",
       },
     ],
+    /*  education: [
+       {
+         type: String,
+       },
+     ], */
     education: [
       {
-        type: String,
+        type: mongoose.Schema.ObjectId,
+        ref: "qualification",
       },
     ],
     workLocation: [
@@ -45,13 +51,26 @@ const projectSchema = new mongoose.Schema(
       },
     ],
     budget: {
-      minPrice: Number,
-      maxPrice: Number,
-      currency: String,
+      minPrice: { type: Number },
+      maxPrice: { type: Number },
+      currency: { type: String, default: "INR" },
+    },
+    projectProgress: {
+      type: String,
+      enum: ["open", "working", "done"],
+      default: "open",
     },
     postedBy: {
       type: mongoose.Schema.ObjectId,
       ref: "user",
+    },
+    bidExpireOn: {
+      type: Date,
+      default: () => new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
     },
     category: [
       {
@@ -108,11 +127,29 @@ const projectSchema = new mongoose.Schema(
         },
       },
     ],
+    projectProgress: {
+      type: String,
+      enum: ["OPEN", "WORKING", "DONE"],
+      default: "OPEN",
+    },
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
+projectSchema.pre("find", function () {
+  this.where({ isDeleted: false });
+});
+
+projectSchema.pre("findOne", function () {
+  this.where({ isDeleted: false });
+});
+
 // run this below line in mongo for full text search
 // db.projects.createIndex({ "$**" : "text" })
-projectSchema.index({ projectTitle: "text" });
+projectSchema.index({
+  projectTitle: "text",
+  description: "text",
+  workLocation: "text",
+});
 module.exports = mongoose.model("project", projectSchema);

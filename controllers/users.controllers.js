@@ -6,10 +6,12 @@ const {
   setReviewService,
   userFindService,
   getAllUsersService,
+
   registerUserService,
   setContactedService,
   loginUserService,
   updateUserService,
+  getCompaniesInFeedService,
 } = require("../services/users.service");
 
 const getAllUsers = async (req, res) => {
@@ -30,21 +32,27 @@ const getAllUsers = async (req, res) => {
 const registerUser = async (req, res) => {
   const {
     email,
-    firstName,
-    lastName,
+    companyName,
     password,
     phoneNumber,
     userName,
+
+    firstName,
+    lastName,
+
     userType,
   } = req.body;
 
   const response = await registerUserService({
     email,
-    firstName,
-    lastName,
+    companyName,
     password,
     phoneNumber,
     userName,
+
+    firstName,
+    lastName,
+
     userType,
   });
 
@@ -55,11 +63,12 @@ const registerUser = async (req, res) => {
 
 const updateUser = async (req, res) => {
   const {
-    firstName,
-    lastName,
+    // firstName,
+    // lastName,
+    companyName,
     email,
-    userType,
-    occupation,
+    // userType,
+    // occupation,
     intro,
     profilePic,
     phoneNumber,
@@ -67,15 +76,16 @@ const updateUser = async (req, res) => {
     socialProfiles,
     qualifications,
     skills,
-    portfolioProjects,
+    // portfolioProjects,
     website,
   } = req.body;
   const response = await updateUserService({
-    firstName,
-    lastName,
+    companyName,
+    // firstName,
+    // lastName,
     email,
-    userType,
-    occupation,
+    // userType,
+    // occupation,
     intro,
     profilePic,
     phoneNumber,
@@ -83,7 +93,7 @@ const updateUser = async (req, res) => {
     socialProfiles,
     qualifications,
     skills,
-    portfolioProjects,
+    // portfolioProjects,
     website,
   });
   res.status(response?.status).json({
@@ -93,6 +103,8 @@ const updateUser = async (req, res) => {
 
 const loginUser = async (req, res) => {
   const { email, password } = req.body;
+
+  console.log(email, password);
   const response = await loginUserService({
     email,
     password,
@@ -180,6 +192,15 @@ const setContacted = async (req, res) => {
   });
 };
 
+const getCompaniesInFeed = async (req, res) => {
+  const { companyId } = req.body;
+
+  const response = await getCompaniesInFeedService(companyId);
+  res.status(response.status).json({
+    ...response,
+  });
+};
+
 module.exports = {
   getAllUsers,
   registerUser,
@@ -190,4 +211,5 @@ module.exports = {
   setContacted,
   loginUser,
   updateUser,
+  getCompaniesInFeed,
 };

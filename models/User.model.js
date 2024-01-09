@@ -12,6 +12,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    companyName: {
+      type: String,
+    },
+
     email: {
       type: String,
       required: true,
@@ -27,12 +31,14 @@ const userSchema = new mongoose.Schema(
       trim: true,
       unique: true,
     },
+    // need to update
     userType: {
       type: String,
       enum: ["freelancer", "client"],
-      default: "freelancer",
+      default: "client",
       required: true,
     },
+    // need to remove
     occupation: {
       type: String,
       // required: true,
@@ -53,6 +59,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+
     address: {
       type: String,
       default: "",
@@ -61,9 +68,13 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-    // resume: {
-    //   type: String,
-    // },
+    teamMembers: [
+      {
+        name: String,
+        email: String,
+      },
+    ],
+
     socialProfiles: [
       {
         name: {
@@ -79,7 +90,8 @@ const userSchema = new mongoose.Schema(
     qualifications: [
       {
         degree: {
-          type: String,
+          type: mongoose.Schema.ObjectId,
+          ref: "qualification",
           required: true,
         },
       },
@@ -90,16 +102,20 @@ const userSchema = new mongoose.Schema(
         ref: "category",
       },
     ],
+
     portfolioProjects: [
       {
         title: String,
-        // category: String,
+
         description: String,
+
         skills: [
           {
-            type: String,
+            type: mongoose.Schema.ObjectId,
+            ref: "category",
           },
         ],
+
         image_url: String,
         project_url: String,
       },
@@ -141,6 +157,7 @@ const userSchema = new mongoose.Schema(
         ref: "project",
       },
     ],
+
     applications: [
       {
         projectId: {
@@ -199,10 +216,15 @@ const userSchema = new mongoose.Schema(
         ref: "user",
       },
     ],
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 // run this below line in mongo for full text search
 // db.users.createIndex({ "$**" : "text" })
-userSchema.index({ userName: "text", "skills.name": "text" });
+userSchema.index({
+  fullName: "text",
+  userType: "text",
+  intro: "text",
+});
 module.exports = mongoose.model("user", userSchema);

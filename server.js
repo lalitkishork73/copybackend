@@ -2,12 +2,14 @@ const express = require("express");
 var logger = require("morgan");
 const dotenv = require("dotenv");
 const cors = require("cors");
-
 const { connectDB } = require("./db");
 // routers
-const apiRouter = require("./routes/api");
 
+const apiRouter = require("./routes/api");
+const multer = require("multer");
+const { upload, uploadFile } = require("./utils/multer");
 const app = express();
+// app.use(multer().any());
 // Allow Origins according to your need.
 corsOptions = {
   origin: "*",
@@ -24,10 +26,83 @@ connectDB()
   .then(() => console.log("Database Connected"))
   .catch((err) => console.log(err));
 
+
+
+
+
+const fs = require("fs");
+
+const uploadsDir = __dirname + "/uploads";
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir);
+}
+
+
+// Define storage for Multer
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    // Specify the local folder where you want to store the files
+    cb(null, uploadsDir);
+  },
+  filename: function (req, file, cb) {
+    // Use a unique filename for each uploaded file
+    cb(null, Date.now() + "-" + file.originalname);
+  },
+});
+
+
+app.use(upload.any());
+
+app.post("/upload", async (req, res) => {
+  try {
+    let files = req.files;
+
+    if (files && files.length > 0) {
+      // Assuming you have an uploadFile function
+      let url = await uploadFile(files[0]);
+
+      // Add any further processing or response handling here
+      return res.status(200).json({ message: "File uploaded successfully", url: url });
+    } else {
+      return res.status(400).json({ message: "No files uploaded" });
+    }
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+
+
+
 app.get("/", (req, res) => {
   return res.json({ msg: "Welcome! Its freelance - Backend" });
 });
+
 app.use("/api/v1", apiRouter);
+
+// Route for handling file uploads
+
+// Use Multer middleware
+app.use(upload.any());
+app.post("/upload", async (req, res) => {
+  try {
+    let files = req.files;
+    if (files && files.length > 0) {
+      // Assuming you have an uploadFile function
+      let url = await uploadFile(files[0]);
+      // Add any further processing or response handling here
+      return res
+        .status(200)
+        .json({ message: "File uploaded successfully", url: url });
+    } else {
+      return res.status(400).json({ message: "No files uploaded" });
+    }
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+});
 
 // catch 404 and forward to error handler
 app.use("*", function (req, res) {

@@ -13,5 +13,8 @@ router.post("/getUserReviews", useTryCatch(userControllers.getUserReviews));
 router.post("/readNotification", useTryCatch(userControllers.readNotification));
 router.post("/setContacted", useTryCatch(userControllers.setContacted));
 router.put("/updateUser", useTryCatch(userControllers.updateUser));
-
+router.post(
+  "/getCompaniesInFeed",
+  useTryCatch(userControllers.getCompaniesInFeed)
+);
 module.exports = router;

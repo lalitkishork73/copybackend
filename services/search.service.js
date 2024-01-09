@@ -26,7 +26,7 @@ const searchService = async ({
 
   const budgetQuery = budgetMin !== null &&
     budgetMax !== null && {
-      $and: [
+      $or: [
         { "budget.minPrice": { $gte: budgetMin } },
         { "budget.minPrice": { $lte: budgetMax } },
       ],

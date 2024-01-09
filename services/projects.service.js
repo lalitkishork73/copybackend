@@ -1,4 +1,4 @@
-const { User, Project } = require("../models");
+const { User, Project, Application } = require("../models");
 const { pagination } = require("../services/utility.service");
 const { userSelect, applicationSelect } = require("./service.constants");
 const createProjectService = async (bodyArgs) => {
@@ -7,6 +7,7 @@ const createProjectService = async (bodyArgs) => {
   });
   const err = await project.validateSync();
   if (err) {
+    console.log(err);
     return {
       status: 400,
       message: "Something went wrong",
@@ -154,21 +155,7 @@ const editProjectService = async ({
     };
   }
 };
-const getProjectById = async ({ projectId }) => {
-  const project = await Project.findById(projectId);
-  if (!project) {
-    return {
-      status: 404,
-      message: "Project not found",
-    };
-  } else {
-    return {
-      status: 200,
-      message: "Project found",
-      project,
-    };
-  }
-};
+
 const getValidProjects = async ({ clientId, freelancerId }) => {
   const projects = await Project.find({
     postedBy: clientId,
@@ -179,11 +166,139 @@ const getValidProjects = async ({ clientId, freelancerId }) => {
   }).exec();
   return { status: 200, message: "Get data", projects };
 };
+
+const getProjectByClientIdService = async ({
+  page,
+  size,
+  clientId,
+  projectType,
+}) => {
+  const { limit, skip } = pagination({ page, size });
+  let projects = [];
+
+  if (projectType === "done") {
+    const count = await Project.find({
+      postedBy: clientId,
+      isDeleted: false,
+      projectProgress: "done",
+    }).count();
+    const totalPages = count / size;
+    projects = await Project.find(
+      {
+        isDeleted: false,
+
+        projectProgress: "done",
+      },
+      {},
+      { limit, skip }
+    )
+      .populate("projectId")
+      .sort({ createdAt: -1 })
+      .exec();
+    return {
+      status: 200,
+      totalPages,
+      page,
+      message: "Projects fetched successfully",
+      projects,
+    };
+  } else if (projectType === "working") {
+    const count = await Project.find({
+      isDeleted: false,
+      projectProgress: "wokring",
+    }).count();
+    const totalPages = count / size;
+    projects = await Project.find(
+      {
+        isDeleted: false,
+
+        projectProgress: "working",
+      },
+      {},
+      { limit, skip }
+    )
+      .populate("projectId")
+      .sort({ createdAt: -1 })
+      .exec();
+    return {
+      status: 200,
+      totalPages,
+      page,
+      message: "Projects fetched successfully",
+      projects,
+    };
+  } else {
+    const count = await Project.find({
+      postedBy: clientId,
+      isDeleted: false,
+    }).count();
+    const totalPages = count / size;
+
+    projects = await Project.find(
+      { postedBy: clientId, isDeleted: false },
+      {},
+      { limit, skip }
+    )
+
+      .sort({ createdAt: -1 })
+      .exec();
+
+    return {
+      status: 200,
+      totalPages,
+      page,
+      message: "Projects fetched successfully",
+      projects,
+    };
+  }
+};
+
+const deleteProjectService = async ({ projectId }) => {
+  if (!projectId) {
+    return {
+      status: 404,
+      message: "Bad Request",
+    };
+  }
+
+  const project = await Project.findByIdAndUpdate(projectId, {
+    isDeleted: true,
+  });
+  return {
+    status: 200,
+    message: "Project deleted successfully",
+  };
+};
+const deleteProjectById = async ({ projectId }) => {
+  const updatedProject = await Project.findByIdAndUpdate(
+    { _id: projectId, isDeleted: false },
+    { $set: { isDeleted: true } },
+    { new: true }
+  );
+  if (!updatedProject) {
+    return { status: 404, message: "No project found" };
+  }
+
+  //updating the applications
+  const application = await Application.findOneAndUpdate(
+    { projectId, active: true },
+    { $set: { active: false } }
+  );
+
+  return {
+    status: 200,
+    message: "Project deleted successfully",
+    deletedProject: updatedProject,
+  };
+};
+
 module.exports = {
   createProjectService,
   getAllProjectsService,
   editProjectService,
-  getProjectById,
+  getProjectByClientIdService,
   getProjectByIdService,
   getValidProjects,
+  deleteProjectService,
+  deleteProjectById,
 };

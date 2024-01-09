@@ -9,4 +9,13 @@ router.post(
   useTryCatch(applicationController.getApplicationsByProjectId)
 );
 
+router.post(
+  "/getApplicationsByFreelancerId",
+  useTryCatch(applicationController.getApplicationsByFreelancerId)
+);
+
+router.delete(
+  "/deleteApplication",
+  useTryCatch(applicationController.deleteApplication)
+);
 module.exports = router;

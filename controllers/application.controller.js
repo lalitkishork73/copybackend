@@ -1,6 +1,8 @@
 const { Project } = require("../models");
 const {
   getApplicationsByProjectIdService,
+  getApplicationsByFreelancerIdService,
+  deleteApplicationService,
 } = require("../services/applications.service");
 const { queryConditions } = require("../services/utility.service");
 
@@ -20,7 +22,7 @@ const getApplicationsByProjectId = async (req, res) => {
 
     bid: { $gte: minBid, $lte: maxBid },
   };
-  console.log(projectId, "thisis project ");
+
   const response = await getApplicationsByProjectIdService({
     filters,
     sortedBy,
@@ -31,6 +33,35 @@ const getApplicationsByProjectId = async (req, res) => {
   });
 };
 
+const getApplicationsByFreelancerId = async (req, res) => {
+  const { freelancerId, bidType = "totalBids" } = req.body;
+  const { page = 1, size = 10 } = req.query;
+  const response = await getApplicationsByFreelancerIdService({
+    freelancerId,
+    bidType,
+    page,
+    size,
+  });
+
+  res.status(response.status).json({
+    ...response,
+  });
+};
+
+const deleteApplication = async (req, res) => {
+  const { applicationId, freelancerId, projectId } = req.body;
+  const response = await deleteApplicationService({
+    applicationId,
+    freelancerId,
+    projectId,
+  });
+
+  res.status(response.status).json({
+    ...response,
+  });
+};
 module.exports = {
   getApplicationsByProjectId,
+  getApplicationsByFreelancerId,
+  deleteApplication,
 };

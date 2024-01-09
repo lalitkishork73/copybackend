@@ -1,5 +1,6 @@
-const { User } = require("../models");
+const { User, Project } = require("../models");
 const { setNotification } = require("./notification.service");
+const mongoose = require("mongoose");
 const {
   pagination,
   comparePassword,
@@ -196,11 +197,14 @@ const getAllUsersService = async ({ conditions, page, size }) => {
 
 const registerUserService = async ({
   email,
-  firstName,
-  lastName,
+  companyName,
   password,
   phoneNumber,
   userName,
+
+  firstName,
+  lastName,
+
   userType,
 }) => {
   const user = await await User.findOne({
@@ -210,13 +214,13 @@ const registerUserService = async ({
   if (user) {
     if (user.userName === userName) {
       return {
-        message: "User Already Exists with the same username",
+        message: "Company  already exists with the same username",
         status: 403,
       };
     }
     if (user.email === email) {
       return {
-        message: "User Already Exists with the same Email Id",
+        message: "Company already exists with the same email",
         status: 403,
       };
     }
@@ -226,18 +230,21 @@ const registerUserService = async ({
     const hashedPassword = await hashPassword(password);
 
     if (!hashedPassword) {
-      return { status: 400, message: "something went wrong" };
+      return { status: 400, message: "Something went wrong" };
     }
-
     const fullName = firstName + " " + lastName;
 
     const newUser = new User({
       email,
-      firstName,
-      lastName,
+      companyName,
+
       password: hashedPassword,
       phoneNumber,
       userName,
+
+      firstName,
+      lastName,
+
       userType,
       fullName,
     });
@@ -251,7 +258,7 @@ const registerUserService = async ({
     } else {
       const newUserSave = await newUser.save();
       return {
-        message: "User Registered",
+        message: "User registered successfully",
         userDetails: newUserSave,
         status: 200,
       };
@@ -409,11 +416,12 @@ const setContactedService = async ({ senderUserId, receiverUserId }) => {
 };
 
 const updateUserService = async ({
-  firstName,
-  lastName,
+  // firstName,
+  // lastName,
+  companyName,
   email,
-  userType,
-  occupation,
+  // userType,
+  // occupation,
   intro,
   profilePic,
   phoneNumber,
@@ -421,12 +429,12 @@ const updateUserService = async ({
   socialProfiles,
   qualifications,
   skills,
-  portfolioProjects,
+  // portfolioProjects,
   website,
 }) => {
-  const fullName = firstName + " " + lastName;
+  // const fullName = firstName + " " + lastName;
 
-  const projects = portfolioProjects.filter((project) => project !== false);
+  // const projects = portfolioProjects.filter((project) => project !== false);
 
   if (!email) {
     return {
@@ -434,7 +442,7 @@ const updateUserService = async ({
       message: "Please provide valid email",
     };
   }
-
+  console.log(skills);
   const user = await User.findOne({
     email,
   });
@@ -446,12 +454,13 @@ const updateUserService = async ({
   const userDetails = await User.findOneAndUpdate(
     { email: email },
     {
-      fullName,
-      firstName,
-      lastName,
+      companyName,
+      // fullName,
+      // firstName,
+      // lastName,
       email,
-      userType,
-      occupation,
+      // userType,
+      // occupation,
       intro,
       profilePic,
       phoneNumber,
@@ -459,7 +468,7 @@ const updateUserService = async ({
       socialProfiles,
       qualifications,
       skills,
-      portfolioProjects: projects,
+      // portfolioProjects: projects,
       website,
     }
   );
@@ -468,6 +477,83 @@ const updateUserService = async ({
     status: 200,
     message: "User updated successfully",
     userDetails,
+  };
+};
+
+async function getMatchedUsers(projectId, currentUserId) {
+  try {
+    // Step 1: Find the project by ID
+    const project = await Project.findById(projectId).populate("skills");
+
+    if (!project) {
+      throw new Error("Project not found");
+    }
+
+    // Step 2: Extract skills from the project
+    const projectSkills = project.skills.map((skill) => skill._id);
+
+    // Step 3: Find users with matching skills, excluding the current user
+    const matchingUsers = await User.find({
+      _id: { $ne: mongoose.Types.ObjectId(currentUserId) },
+      skills: { $in: projectSkills },
+    });
+
+    // Step 4: Calculate matching score for each user
+    const usersWithScore = matchingUsers.map((user) => {
+      let matchingScore = 0;
+
+      user.skills.forEach((userSkill) => {
+        if (projectSkills.includes(userSkill)) {
+          matchingScore++;
+        }
+      });
+
+      return {
+        project,
+        user,
+        matchingScore,
+      };
+    });
+
+    // Step 5: Sort users based on the matching score
+    const sortedUsers = usersWithScore.sort(
+      (a, b) => b.matchingScore - a.matchingScore
+    );
+
+    return sortedUsers;
+  } catch (error) {
+    throw error;
+  }
+}
+
+const getCompaniesInFeedService = async (companyId) => {
+  const company = await User.findById(companyId);
+  if (!company) {
+    return {
+      status: 404,
+      message: "No company found",
+    };
+  }
+
+  const projects = await Project.find({ postedBy: companyId });
+
+  if (projects.length === 0) {
+    return {
+      status: 404,
+      message: "No project found",
+    };
+  }
+
+  const usersPromises = projects.map(async (project) => {
+    const result = await getMatchedUsers(project._id, companyId);
+    return result;
+  });
+  const users = await Promise.all(usersPromises);
+
+  return {
+    status: 200,
+    message: "Feed updated successfully",
+    companies: users,
   };
 };
 
@@ -480,4 +566,5 @@ module.exports = {
   setContactedService,
   loginUserService,
   updateUserService,
+  getCompaniesInFeedService,
 };

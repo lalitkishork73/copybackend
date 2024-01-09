@@ -26,8 +26,10 @@ const hireRequestSchema = new mongoose.Schema(
     },
     hireRequestStatus: {
       type: String,
-      enum: ["rejected", "agreed"],
+      enum: ["rejected", "agreed", "pending"],
+      default: "pending",
     },
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

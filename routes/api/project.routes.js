@@ -7,6 +7,10 @@ const { useTryCatch } = require("../../services/utility.service");
 router.post("/getAllProjects", useTryCatch(projectControllers.getAllProjects));
 router.post("/createProject", useTryCatch(projectControllers.createProject));
 router.put("/editProject", useTryCatch(projectControllers.editProject));
+router.post(
+  "/getProjectsByClientId",
+  useTryCatch(projectControllers.getProjectByClientId)
+);
 router.get(
   "/getProjectById/:projectId",
   useTryCatch(projectControllers.getProjectById)
@@ -14,5 +18,10 @@ router.get(
 router.get(
   "/getvalidProjectForHire",
   useTryCatch(projectControllers.getValidProjectsForHire)
+);
+router.delete("/deleteProject", useTryCatch(projectControllers.deleteProject));
+router.delete(
+  "/deleteProjectById/:projectId",
+  useTryCatch(projectControllers.deleteProjectByIdController)
 );
 module.exports = router;

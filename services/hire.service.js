@@ -4,6 +4,17 @@ const { setNotification } = require("./notification.service");
 const { pagination } = require("./utility.service");
 
 const applyProjectService = async (bodyArgs) => {
+  const existing = await Application.find({
+    projectId: bodyArgs.projectId,
+    userId: bodyArgs.userId,
+    active: true,
+  });
+  if (existing.length > 0) {
+    return {
+      message: "Bad Request",
+      status: 400,
+    };
+  }
   const application = new Application({
     ...bodyArgs,
   });
@@ -394,6 +405,14 @@ const agreeRejectHireService = async ({ hireRequestId, hireRequestStatus }) => {
   };
 };
 
+const getAllSentHireRequestsService = async (clientId) => {
+  const hireRequests = await HireRequest.find({ clientId: clientId })
+    .populate("projectId")
+    .populate("freelancerId");
+
+  return hireRequests;
+};
+
 module.exports = {
   applyProjectService,
   getAllAppliedProjectsService,
@@ -401,4 +420,5 @@ module.exports = {
   hireRequestService,
   getAllHireRequestsService,
   agreeRejectHireService,
+  getAllSentHireRequestsService,
 };

@@ -11,14 +11,19 @@ const applicationRouter = require("./application.routes");
 const messagesRouter = require("./message.routes");
 const chatRouter = require("./chat.routes");
 const categoryRouter = require("./category.routes");
+const qualificationRouter = require("./qualification.routes");
+const resourcesRouter = require("./resources.routes");
+
 apiRouter.use("/search", searchRouter);
 apiRouter.use("/users", userRouter);
 apiRouter.use("/projects", projectsRouter);
 apiRouter.use("/favourites", favoutiesRouter);
 apiRouter.use("/hire", hireRouter);
 apiRouter.use("/application", applicationRouter);
-
 apiRouter.use("/chat", chatRouter);
 apiRouter.use("/messages", messagesRouter);
 apiRouter.use("/category", categoryRouter);
+apiRouter.use("/qualification", qualificationRouter);
+apiRouter.use("/resources", resourcesRouter);
+
 module.exports = apiRouter;

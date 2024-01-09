@@ -1,6 +1,7 @@
-const { Application } = require("../models");
+const { Application, Project, User } = require("../models");
 const mongoose = require("mongoose");
 const { pagination, queryConditions } = require("../services/utility.service");
+const { application } = require("express");
 const sortApplications = async (condition, filters) => {
   let sortQuery = {};
   let sortedApplications = [];
@@ -186,6 +187,151 @@ const getApplicationsByProjectIdService = async ({ filters, sortedBy }) => {
   };
 };
 
+const getApplicationsByFreelancerIdService = async ({
+  freelancerId,
+  bidType,
+  page,
+  size,
+}) => {
+  console.log(freelancerId, bidType);
+  const { limit, skip } = pagination({ page, size });
+
+  if (bidType === "pastBids") {
+    const count = await Application.find({
+      userId: freelancerId,
+      active: true,
+      applicationStatus: { $in: ["hired", "rejected"] },
+    }).countDocuments();
+    const totalPages = count / size;
+    const applications = await Application.find(
+      {
+        userId: freelancerId,
+        active: true,
+        applicationStatus: { $in: ["hired", "rejected"] },
+      },
+      {},
+      { limit, skip }
+    )
+      .populate("projectId")
+      .sort({ createdAt: -1 })
+      .exec();
+    return {
+      status: 200,
+      totalPages,
+      page,
+      message: "Applications fetched successfully",
+      applications: applications,
+    };
+  } else if (bidType === "currentBids") {
+    const count = await Application.find({
+      userId: freelancerId,
+      active: true,
+
+      applicationStatus: "hold",
+    }).countDocuments();
+    const totalPages = count / size;
+    const applications = await Application.find(
+      {
+        userId: freelancerId,
+        active: true,
+
+        applicationStatus: "hold",
+      },
+      {},
+      { limit, skip }
+    )
+      .populate("projectId")
+      .sort({ createdAt: -1 })
+      .exec();
+
+    console.log(application, "this is applications");
+    return {
+      status: 200,
+      totalPages,
+      page,
+      message: "Applications fetched successfully",
+      applications: applications,
+    };
+  } else {
+    const count = await Application.find({
+      userId: freelancerId,
+      active: true,
+    }).countDocuments();
+    const totalPages = count / size;
+
+    const applications = await Application.find(
+      { userId: freelancerId, active: true },
+      {},
+      { limit, skip }
+    )
+      .populate("projectId")
+      .sort({ createdAt: -1 })
+      .exec();
+    console.log(applications, "this is applicatio");
+    return {
+      status: 200,
+      totalPages,
+      page,
+      message: "Applications fetched successfully",
+      applications: applications,
+    };
+  }
+};
+
+const deleteApplicationService = async ({
+  applicationId,
+  freelancerId,
+  projectId,
+}) => {
+  if (!applicationId && !freelancerId) {
+    return {
+      status: 404,
+      message: "Bad Request",
+    };
+  }
+
+  const application = await Application.findByIdAndUpdate(applicationId, {
+    active: false,
+  });
+
+  const updatedProject = await Project.findByIdAndUpdate(
+    projectId,
+    {
+      $pull: {
+        appliedBy: {
+          userId: freelancerId,
+          applicationId: applicationId,
+        },
+      },
+    },
+    {
+      runValidators: true,
+      new: true,
+    }
+  );
+  const updatedUser = await User.findByIdAndUpdate(
+    freelancerId,
+    {
+      $pull: {
+        applications: {
+          projectId: projectId,
+          applicationId: applicationId,
+        },
+      },
+    },
+    {
+      runValidators: true,
+      new: true,
+    }
+  );
+  return {
+    status: 200,
+    message: "Applications deleted successfully",
+  };
+};
+
 module.exports = {
+  getApplicationsByFreelancerIdService,
   getApplicationsByProjectIdService,
+  deleteApplicationService,
 };
