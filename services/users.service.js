@@ -5,6 +5,7 @@ const {
   pagination,
   comparePassword,
   hashPassword,
+  calculateProfileCompletion,
 } = require("./utility.service");
 
 const {
@@ -12,6 +13,17 @@ const {
   applicationSelect,
   projectSelect,
 } = require("./service.constants");
+const { sendEmail } = require("../utils/sendEmail");
+const { generateOTP } = require("../utils/generateOtp");
+const {
+  emailVerificationTemplate,
+  resetPasswordTemplate,
+  registrationTemplate,
+} = require("../utils/emailTemplates");
+const {
+  generateResetToken,
+  verifyResetToken,
+} = require("../utils/forgotPasswordtoken");
 
 const userFindService = async (conditions) => {
   const user = await User.find({ ...conditions })
@@ -84,6 +96,22 @@ const userFindService = async (conditions) => {
       path: "skills",
     });
   return user;
+};
+
+const getCompanyByIdService = async (companyId) => {
+  const company = await User.findById(companyId).populate("skills");
+  if (!company) {
+    return {
+      status: 404,
+      message: "No company found",
+    };
+  }
+
+  return {
+    status: 200,
+    message: "Fetched company successfully",
+    company,
+  };
 };
 
 const getAllUsersService = async ({ conditions, page, size }) => {
@@ -199,25 +227,28 @@ const registerUserService = async ({
   email,
   companyName,
   password,
-  phoneNumber,
-  userName,
+  // phoneNumber,
+  // userName,
 
-  firstName,
-  lastName,
+  // firstName,
+  // lastName,
 
-  userType,
+  // userType,
 }) => {
-  const user = await await User.findOne({
-    $or: [{ email }, { userName }],
+  const company = await User.findOne({ companyName });
+
+  if (company) {
+    return {
+      message: "Company already exists with the same company name",
+      status: 403,
+    };
+  }
+
+  const user = await User.findOne({
+    email,
   });
 
   if (user) {
-    if (user.userName === userName) {
-      return {
-        message: "Company  already exists with the same username",
-        status: 403,
-      };
-    }
     if (user.email === email) {
       return {
         message: "Company already exists with the same email",
@@ -232,24 +263,37 @@ const registerUserService = async ({
     if (!hashedPassword) {
       return { status: 400, message: "Something went wrong" };
     }
-    const fullName = firstName + " " + lastName;
+    // const fullName = firstName + " " + lastName;
+    //send
 
+    //verify user
+    const otp = await generateOTP();
+    const expiration = new Date(Date.now() + 10 * 60 * 1000);
+    const emailContent = `You account verification code is ${otp}. Please do not share this code with anyone. This otp is valid until 10 minutes.`;
+    const emailTempate = emailVerificationTemplate(otp, email, companyName);
+    sendEmail(email, emailTempate, "Verifying email for registration!");
     const newUser = new User({
       email,
       companyName,
 
       password: hashedPassword,
-      phoneNumber,
-      userName,
+      otp: {
+        otp,
+        expireIn: expiration,
+      },
+      // phoneNumber,
+      // userName,
 
-      firstName,
-      lastName,
+      // firstName,
+      // lastName,
 
-      userType,
-      fullName,
+      // userType,
+      // fullName,
     });
+
     const err = await newUser.validateSync();
     if (err) {
+      console.log("err: ", err);
       return {
         message: `Something went Wrong`,
         status: 400,
@@ -258,12 +302,78 @@ const registerUserService = async ({
     } else {
       const newUserSave = await newUser.save();
       return {
-        message: "User registered successfully",
+        message: "Please enter otp sent on your email",
         userDetails: newUserSave,
         status: 200,
       };
     }
   }
+};
+
+const verifyUserService = async ({ email, otp }) => {
+  // Find the user by email
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    return {
+      message: "User not found",
+      status: 404,
+    };
+  }
+
+  if (user.isVerified) {
+    return {
+      message: "User is already verfied",
+      status: 400,
+    };
+  }
+
+  if (user.otp.otp !== otp) {
+    return {
+      message: "Incorrect OTP",
+      status: 403,
+    };
+  }
+
+  // Check if the OTP is expired
+  if (user.otp.expireIn < new Date()) {
+    return {
+      message: "OTP has expired",
+      status: 403,
+    };
+  }
+
+  // Update user's isVerified status and clear OTP information
+  const updatedUser = await User.findOneAndUpdate(
+    { email },
+    { $set: { isVerified: true, otp: null } },
+    { new: true }
+  );
+
+  if (!updatedUser) {
+    return {
+      message: "Failed to update user",
+      status: 500,
+    };
+  }
+
+  const verificationTemplate = registrationTemplate(updatedUser.companyName);
+  sendEmail(
+    email,
+    verificationTemplate,
+    "Verification completed successfully!"
+  );
+
+  return {
+    message: "User verified successfully",
+    status: 200,
+    userDetails: {
+      email: updatedUser.email,
+      companyName: updatedUser.companyName,
+      // Omit other sensitive fields...
+    },
+  };
 };
 
 const loginUserService = async ({
@@ -275,21 +385,109 @@ const loginUserService = async ({
 
   if (user.length === 0) {
     return { status: 404, message: "User not found" };
-  } else {
-    const updatedUser = await userFindService({ email });
-
-    //checking password
-    const isMatch = await comparePassword(password, user[0].password);
-
-    if (!isMatch) {
-      return {
-        status: 400,
-        message: "Invalid credentials",
-      };
-    } else {
-      return { status: 200, message: "Login succes", user: updatedUser };
-    }
   }
+
+  const updatedUser = await userFindService({ email });
+
+  //checking password
+  const isMatch = await comparePassword(password, user[0].password);
+
+  if (!isMatch) {
+    return {
+      status: 400,
+      message: "Invalid credentials",
+    };
+  }
+
+  // if (user[0].isVerified === false) {
+  //   const otp = await generateOTP();
+  //   const expiration = new Date(Date.now() + 10 * 60 * 1000);
+
+  //   const emailTempate = emailVerificationTemplate(
+  //     otp,
+  //     email,
+  //     user[0].companyName
+  //   );
+  //   sendEmail(email, emailTempate, "Verifying email for login!");
+  //   await User.findOneAndUpdate(
+  //     { email },
+  //     {
+  //       otp: {
+  //         otp,
+  //         expireIn: expiration,
+  //       },
+  //     }
+  //   );
+  //   return {
+  //     status: 401,
+  //     message: "This user is not verified",
+  //   };
+  // }
+
+  return { status: 200, message: "Login succes", user: updatedUser };
+};
+
+const forgotPasswordService = async ({ email }) => {
+  // generating a token
+
+  const company = await User.findOne({ email, isVerified: true });
+  if (!company) {
+    return {
+      status: 404,
+      message: "No company found with this email",
+    };
+  }
+
+  const token = await generateResetToken(company.email);
+  //sending email for user
+
+  const link = `${process.env.FRONTEND_ORIGIN}ForgotPassword/${token}`;
+  const resetTemplate = resetPasswordTemplate(link);
+  await sendEmail(email, resetTemplate, "Reset your password");
+
+  return {
+    status: 200,
+    message: "Password reset link has been sent to your email",
+  };
+};
+
+const resetPasswordService = async ({ token, password }) => {
+  if (!password) {
+    return {
+      status: 400,
+      message: "Please enter valid password",
+    };
+  }
+  //verify token
+  const isEmail = verifyResetToken(token);
+  if (!isEmail) {
+    return {
+      status: 400,
+      message: "Invalid token or expired",
+    };
+  }
+
+  //hashing password
+  const hashedPassword = await hashPassword(password);
+
+  //find and update user
+  const updatedCompany = await User.findOneAndUpdate(
+    { email: isEmail },
+    { $set: { password: hashedPassword } },
+    { new: true }
+  );
+  console.log(updatedCompany);
+  if (!updatedCompany) {
+    return {
+      message: "Company not found",
+      status: 404,
+    };
+  }
+
+  return {
+    status: 200,
+    message: "Company updated successfully",
+  };
 };
 
 const setReviewService = async ({
@@ -418,6 +616,7 @@ const setContactedService = async ({ senderUserId, receiverUserId }) => {
 const updateUserService = async ({
   // firstName,
   // lastName,
+  companyId,
   companyName,
   email,
   // userType,
@@ -451,6 +650,21 @@ const updateUserService = async ({
     return { status: 404, message: "User not found" };
   }
 
+  //cheks that other company name exists except current company name
+
+  if (companyName) {
+    const isCompanyExists = await User.findOne({
+      companyName,
+      _id: { $ne: companyId },
+    });
+
+    if (isCompanyExists) {
+      return {
+        status: 400,
+        message: "Company Name is alreay exists",
+      };
+    }
+  }
   const userDetails = await User.findOneAndUpdate(
     { email: email },
     {
@@ -470,8 +684,11 @@ const updateUserService = async ({
       skills,
       // portfolioProjects: projects,
       website,
-    }
+    },
+    { new: true }
   );
+
+  calculateProfileCompletion(email);
 
   return {
     status: 200,
@@ -480,53 +697,85 @@ const updateUserService = async ({
   };
 };
 
+const resendOtpService = async (email) => {
+  const otp = await generateOTP();
+
+  const expiration = new Date(Date.now() + 10 * 60 * 1000);
+  const company = await User.findOne({ email });
+
+  if (!company) {
+    return {
+      status: 400,
+      message: "No company found with this email",
+    };
+  }
+  if (company && company.otp && company.otp.expireIn > new Date()) {
+    const remainingMinutes = Math.ceil(
+      (company.otp.expireIn - Date.now()) / (60 * 1000)
+    );
+    return {
+      status: 400,
+      message: `Please wait ${remainingMinutes} minutes before requesting a new OTP.`,
+    };
+  }
+  const emailTempate = emailVerificationTemplate(
+    otp,
+    email,
+    company.companyName
+  );
+  sendEmail(email, emailTempate, "Verifying email for registration!");
+  await User.findOneAndUpdate(
+    { email },
+    { $set: { otp: { otp: otp, expireIn: expiration } } }
+  );
+  return {
+    status: 200,
+    message: "Otp sent successfully",
+  };
+};
+
 async function getMatchedUsers(projectId, currentUserId) {
   try {
     // Step 1: Find the project by ID
     const project = await Project.findById(projectId).populate("skills");
-
     if (!project) {
       throw new Error("Project not found");
     }
-
     // Step 2: Extract skills from the project
     const projectSkills = project.skills.map((skill) => skill._id);
-
     // Step 3: Find users with matching skills, excluding the current user
     const matchingUsers = await User.find({
       _id: { $ne: mongoose.Types.ObjectId(currentUserId) },
       skills: { $in: projectSkills },
-    });
-
+    }).populate("skills");
     // Step 4: Calculate matching score for each user
     const usersWithScore = matchingUsers.map((user) => {
       let matchingScore = 0;
-
       user.skills.forEach((userSkill) => {
-        if (projectSkills.includes(userSkill)) {
+        if (projectSkills.includes(userSkill._id)) {
           matchingScore++;
         }
       });
+      const matchingPercentage = (matchingScore / projectSkills.length) * 100;
+      const formattedPercentage = matchingPercentage.toFixed(2);
 
       return {
+        matchingPercentage: formattedPercentage,
         project,
         user,
         matchingScore,
       };
     });
-
     // Step 5: Sort users based on the matching score
     const sortedUsers = usersWithScore.sort(
       (a, b) => b.matchingScore - a.matchingScore
     );
-
     return sortedUsers;
   } catch (error) {
     throw error;
   }
 }
-
-const getCompaniesInFeedService = async (companyId) => {
+const getCompaniesInFeedService = async ({ companyId, page, size }) => {
   const company = await User.findById(companyId);
   if (!company) {
     return {
@@ -534,24 +783,29 @@ const getCompaniesInFeedService = async (companyId) => {
       message: "No company found",
     };
   }
-
   const projects = await Project.find({ postedBy: companyId });
-
   if (projects.length === 0) {
     return {
       status: 404,
       message: "No project found",
     };
   }
-
   const usersPromises = projects.map(async (project) => {
     const result = await getMatchedUsers(project._id, companyId);
     return result;
   });
-  const users = await Promise.all(usersPromises);
+  const allUsersArrays = await Promise.all(usersPromises);
+  const allUsers = allUsersArrays.flat(); // Flatten the array
 
+  const startIndex = (page - 1) * size;
+  const endIndex = page * size;
+  console.log(startIndex, endIndex);
+  const users = allUsers.slice(startIndex, endIndex);
+  const totalPages = allUsers.length / size;
   return {
     status: 200,
+    page: page,
+    totalPages,
     message: "Feed updated successfully",
     companies: users,
   };
@@ -566,5 +820,10 @@ module.exports = {
   setContactedService,
   loginUserService,
   updateUserService,
+  verifyUserService,
   getCompaniesInFeedService,
+  forgotPasswordService,
+  resetPasswordService,
+  getCompanyByIdService,
+  resendOtpService,
 };

@@ -1,125 +1,121 @@
-const { User, Project } = require("../models");
-
+const { Project, Category } = require("../models");
 const { pagination } = require("./utility.service");
-const {
-  userGenericSelect,
-  projectGenericSelect,
-} = require("./service.constants");
+const { projectGenericSelect } = require("./service.constants");
+
 const searchService = async ({
   searchString,
-  page,
-  size,
-  budgetMin = null,
-  budgetMax = null,
-  skills = [],
-  location = [],
-  isRemote = false,
+  page = 1, // Default to page 1 if not provided
+  size = 10 // Default to 10 results per page if not provided
 }) => {
-  const { limit, skip } = pagination({ page, size });
+  try {
+    const { limit, skip } = pagination({ page, size });
 
-  const stringQuery = searchString.length >= 3 && {
-    $text: { $search: searchString },
-  };
-  const stringScore = searchString.length >= 3 && {
-    score: { $meta: "textScore" },
-  };
+    const stringQuery = searchString.length >= 3 && { "$text": { "$search": searchString } };
 
-  const budgetQuery = budgetMin !== null &&
-    budgetMax !== null && {
-      $or: [
-        { "budget.minPrice": { $gte: budgetMin } },
-        { "budget.minPrice": { $lte: budgetMax } },
-      ],
+    const skillsQuery = { ...stringQuery };
+    const skills = await Category.find(skillsQuery);
+
+    const skillIds = skills.map((skill) => skill._id);
+
+    const matchStage = {
+      $match: {
+        isDeleted: false,
+        skills: { $in: skillIds }
+      }
     };
-  const workLocationQuery = location.length >= 1 && {
-    workLocation: { $in: location },
-  };
-  const isRemoteQuery = isRemote && {
-    workLocation: "remote",
-  };
 
-  const userSkillsQuery = skills.length >= 1 && {
-    "skills.name": { $in: skills },
-  };
-  const projectSkillsQuery = skills.length >= 1 && {
-    skills: { $in: skills },
-  };
+    const lookupStages = [
+      {
+        $lookup: {
+          from: "categories",
+          localField: "skills",
+          foreignField: "_id",
+          as: "skills"
+        }
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "postedBy",
+          foreignField: "_id",
+          as: "postedBy"
+        }
+      }
+    ];
 
-  const users = await User.find(
-    {
-      ...stringQuery,
-      ...userSkillsQuery,
-    },
-    {
-      ...stringScore,
-    },
-    { limit, skip }
-  )
-    .sort({ createdAt: -1, ...stringScore })
-    .select(userGenericSelect);
-
-  const projects = await Project.find(
-    {
-      ...stringQuery,
-      ...budgetQuery,
-      ...projectSkillsQuery,
-      ...workLocationQuery,
-      ...isRemoteQuery,
-    },
-    {
-      ...stringScore,
-    },
-    { limit, skip }
-  )
-    .populate({
-      path: "skills",
-    })
-    .populate({
-      path: "postedBy",
-    })
-    .sort({ createdAt: -1, ...stringScore })
-    .select(projectGenericSelect);
-
-  const userCount = await User.find(
-    {
-      ...stringQuery,
-      ...userSkillsQuery,
-    },
-    {}
-  ).count();
-
-  const projectCount = await Project.find(
-    {
-      ...stringQuery,
-      ...budgetQuery,
-      ...projectSkillsQuery,
-      ...workLocationQuery,
-      ...isRemoteQuery,
-    },
-    {}
-  ).count();
-
-  const totalUserPages = Math.ceil(userCount / size);
-  const totalProjectPages = Math.ceil(projectCount / size);
-
-  if (users.length >= 1 || projects.length >= 1) {
-    return {
-      message: "search done",
-      status: 200,
-      users,
-      projects,
-      page,
-      totalUserPages,
-      totalProjectPages,
+    const projectProjection = {
+      $project: {
+        "_id": 1,
+        "projectTitle": 1,
+        "description": 1,
+        "skills._id": 1,
+        "skills.title": 1,
+        "postedBy.fullName": 1,
+        "postedBy.firstName": 1,
+        "postedBy.lastName": 1,
+        "postedBy.profilePic": 1,
+        "postedBy._id": 1,
+        "postedBy.userName": 1,
+        "postedBy.email": 1,
+        "budget": 1,
+        "duration": 1,
+        "createdAt": 1,
+      }
     };
-  } else {
+
+    const countStage = [
+      {
+        $count: "count"
+      }
+    ];
+
+    const pipeline = [
+      matchStage,
+      ...lookupStages,
+      projectProjection,
+      {
+        $facet: {
+          projects: [
+            { $skip: skip },
+            { $limit: limit }
+          ],
+          count: countStage
+        }
+      }
+    ];
+
+    const [textSearchResults, result] = await Promise.all([
+      Project.find({ ...stringQuery }).sort({ "createdAt": -1 }).skip(skip).limit(limit),
+      Project.aggregate(pipeline),
+    ]);
+
+    const projects = result[0].projects;
+    const totalProjectCount = result[0].count[0]?.count || 0;
+    const totalProjectPages = Math.ceil(totalProjectCount / size);
+
+    if (projects.length >= 1) {
+      return {
+        message: "search done",
+        status: 200,
+        projects,
+        page,
+        totalProjectPages: totalProjectPages || 1
+      };
+    } else {
+      return {
+        message: "Bad Request",
+        status: 400
+      };
+    }
+  } catch (error) {
+    console.error("Error in searchService:", error);
     return {
-      message: "Bad Request",
-      status: 400,
+      message: "Internal Server Error",
+      status: 500
     };
   }
 };
 
 module.exports = {
-  searchService,
+  searchService
 };

@@ -12,6 +12,11 @@ const {
   loginUserService,
   updateUserService,
   getCompaniesInFeedService,
+  verifyUserService,
+  forgotPasswordService,
+  resetPasswordService,
+  getCompanyByIdService,
+  resendOtpService,
 } = require("../services/users.service");
 
 const getAllUsers = async (req, res) => {
@@ -29,31 +34,39 @@ const getAllUsers = async (req, res) => {
     ...response,
   });
 };
+const getCompanyById = async (req, res) => {
+  const { companyId } = req.body;
+  const response = await getCompanyByIdService(companyId);
+
+  return res.status(response?.status).json({
+    ...response,
+  });
+};
 const registerUser = async (req, res) => {
   const {
     email,
     companyName,
     password,
-    phoneNumber,
-    userName,
+    // phoneNumber,
+    // userName,
 
-    firstName,
-    lastName,
+    // firstName,
+    // lastName,
 
-    userType,
+    // userType,
   } = req.body;
 
   const response = await registerUserService({
     email,
     companyName,
     password,
-    phoneNumber,
-    userName,
+    // phoneNumber,
+    // userName,
 
-    firstName,
-    lastName,
+    // firstName,
+    // lastName,
 
-    userType,
+    // userType,
   });
 
   res.status(response?.status).json({
@@ -77,6 +90,7 @@ const updateUser = async (req, res) => {
     qualifications,
     skills,
     // portfolioProjects,
+    companyId,
     website,
   } = req.body;
   const response = await updateUserService({
@@ -87,6 +101,7 @@ const updateUser = async (req, res) => {
     // userType,
     // occupation,
     intro,
+    companyId,
     profilePic,
     phoneNumber,
     address,
@@ -101,6 +116,17 @@ const updateUser = async (req, res) => {
   });
 };
 
+const verifyUser = async (req, res) => {
+  const { email, otp } = req.body;
+  const response = await verifyUserService({
+    email,
+    otp,
+  });
+  res.status(response?.status).json({
+    ...response,
+  });
+};
+
 const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
@@ -109,6 +135,34 @@ const loginUser = async (req, res) => {
     email,
     password,
   });
+  res.status(response?.status).json({
+    ...response,
+  });
+};
+
+const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+  const response = await forgotPasswordService({
+    email,
+  });
+  res.status(response?.status).json({
+    ...response,
+  });
+};
+
+const resetPassword = async (req, res) => {
+  const { token, password } = req.body;
+  const response = await resetPasswordService({
+    token,
+    password,
+  });
+  res.status(response?.status).json({
+    ...response,
+  });
+};
+const resendOTP = async (req, res) => {
+  const { email } = req.body;
+  const response = await resendOtpService(email);
   res.status(response?.status).json({
     ...response,
   });
@@ -194,8 +248,14 @@ const setContacted = async (req, res) => {
 
 const getCompaniesInFeed = async (req, res) => {
   const { companyId } = req.body;
+  const { page = 1, size = 10 } = req.query;
+  console.log("req.query: ", req.query);
 
-  const response = await getCompaniesInFeedService(companyId);
+  const response = await getCompaniesInFeedService({
+    companyId,
+    page,
+    size,
+  });
   res.status(response.status).json({
     ...response,
   });
@@ -212,4 +272,9 @@ module.exports = {
   loginUser,
   updateUser,
   getCompaniesInFeed,
+  verifyUser,
+  forgotPassword,
+  resetPassword,
+  getCompanyById,
+  resendOTP,
 };

@@ -6,6 +6,7 @@ const connectDB = async () => {
     useUnifiedTopology: true,
     useCreateIndex: false,
     useFindAndModify: false,
+    // autoIndex: false,
   });
 };
 

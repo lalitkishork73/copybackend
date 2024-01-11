@@ -5,6 +5,7 @@ const categorySchema = new mongoose.Schema(
     title: {
       type: String,
       required: true,
+      index: true
     },
     image: { type: String },
     active: { type: Boolean, default: true },
@@ -17,4 +18,7 @@ const categorySchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+categorySchema.index({ title: "text" })
+
 module.exports = mongoose.model("category", categorySchema);

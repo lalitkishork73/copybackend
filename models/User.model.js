@@ -6,14 +6,15 @@ const userSchema = new mongoose.Schema(
     },
     firstName: {
       type: String,
-      required: true,
+      // required: true,
     },
     lastName: {
       type: String,
-      required: true,
+      // required: true,
     },
     companyName: {
       type: String,
+      required: true,
     },
 
     email: {
@@ -26,17 +27,17 @@ const userSchema = new mongoose.Schema(
     },
     userName: {
       type: String,
-      required: true,
+      // required: true,
       lowercase: true,
       trim: true,
-      unique: true,
+      // unique: true,
     },
     // need to update
     userType: {
       type: String,
       enum: ["freelancer", "client"],
       default: "client",
-      required: true,
+      // required: true,
     },
     // need to remove
     occupation: {
@@ -57,7 +58,11 @@ const userSchema = new mongoose.Schema(
     },
     phoneNumber: {
       type: String,
-      required: true,
+      // required: true,
+    },
+    profileCompleted: {
+      type: Number,
+      default: 20,
     },
 
     address: {
@@ -68,13 +73,21 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-    teamMembers: [
+    resume: {
+      type: String,
+    },
+    resumes: [
       {
         name: String,
         email: String,
       },
     ],
-
+    team: [
+      {
+        type: mongoose.Schema.ObjectId,
+        ref: "user",
+      },
+    ],
     socialProfiles: [
       {
         name: {
@@ -92,7 +105,7 @@ const userSchema = new mongoose.Schema(
         degree: {
           type: mongoose.Schema.ObjectId,
           ref: "qualification",
-          required: true,
+          // required: true,
         },
       },
     ],
@@ -216,6 +229,11 @@ const userSchema = new mongoose.Schema(
         ref: "user",
       },
     ],
+    isVerified: { type: Boolean, default: false },
+    otp: {
+      otp: String,
+      expireIn: Date,
+    },
     isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
@@ -223,7 +241,7 @@ const userSchema = new mongoose.Schema(
 // run this below line in mongo for full text search
 // db.users.createIndex({ "$**" : "text" })
 userSchema.index({
-  fullName: "text",
+  // fullName: "text",
   userType: "text",
   intro: "text",
 });
